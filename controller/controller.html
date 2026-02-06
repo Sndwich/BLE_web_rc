@@ -9,12 +9,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ESP32 Web BLE App</title>
+    <title>BLE Controller</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="">
 </head>
 <body>
-  <h1>ESP32 Web BLE Application</h1>
+  <h1>BLE Controller</h1>
   <button id="connectBleButton">Connect to BLE Device</button>
   <button id="disconnectBleButton">Disconnect BLE Device</button>
   <p>BLE state: <strong><span id="bleState" style="color:#d13a30;">Disconnected</span></strong></p>
@@ -195,6 +195,22 @@
         return datetime;
     }
 
+    // --- Keyboard Control  ---
+    document.addEventListener('keydown', (event) => {
+        // Prevent the command from firing multiple times if the key is held down
+        if (event.repeat) return;
+
+        const key = event.key.toLowerCase(); // Handle both 'O' and 'o'
+
+        if (key === 'o') {
+            console.log("Key 'O' pressed -> Triggering ON Button");
+            onButton.click(); // Programmatically clicks the HTML button
+        } 
+        else if (key === 'p') {
+            console.log("Key 'P' pressed -> Triggering OFF Button");
+            offButton.click(); // Programmatically clicks the HTML button
+        }
+    });
 
 </script>
 
