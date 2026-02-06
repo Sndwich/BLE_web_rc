@@ -27,6 +27,8 @@
   <p>Last value sent: <span id="valueSent"></span></p>
   <p><a href="https://randomnerdtutorials.com/">Created by RandomNerdTutorials.com</a></p>
   <p><a href="https://RandomNerdTutorials.com/esp32-web-bluetooth/">Read the full project here.</a></p>
+
+  <button id="motor_L">LEFT MOTOR</button>
 </body>
 <script>
     // DOM Elements
@@ -39,11 +41,15 @@
     const bleStateContainer = document.getElementById('bleState');
     const timestampContainer = document.getElementById('timestamp');
 
+    const motorButton_L = document.getElementById('motor_L');
+
     //Define BLE Device Specs
-    var deviceName ='ESP32';
+    var deviceName ='Shroomba';
     var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
     var ledCharacteristic = '19b10002-e8f2-537e-4f6c-d104768a1214';
     var sensorCharacteristic= '19b10001-e8f2-537e-4f6c-d104768a1214';
+
+    var motor_L_Characteristic = 'bbcf6bb0-30e6-41af-98d6-b6e8f033d2ec';
 
     //Global Variables to Handle Bluetooth
     var bleServer;
@@ -63,6 +69,10 @@
     // Write to the ESP32 LED Characteristic
     onButton.addEventListener('click', () => writeOnCharacteristic(1));
     offButton.addEventListener('click', () => writeOnCharacteristic(0));
+
+    motorButton_L.addEventListener('mousedown', () => writeOnCharacteristic(1));
+    motorButton_L.addEventListener('mouseup', () => writeOnCharacteristic(0));
+    motorButton_L.addEventListener('mouseleave', () => writeOnCharacteristic(0));
 
     // Check if BLE is available in your Browser
     function isWebBluetoothEnabled() {
@@ -209,6 +219,10 @@
         else if (key === 'p') {
             console.log("Key 'P' pressed -> Triggering OFF Button");
             offButton.click(); // Programmatically clicks the HTML button
+        }
+        else if (key === 'l') {
+            console.log("Key 'L' pressed -> Triggering L_MOTOR button");
+            motorButton_L.click();
         }
     });
 
