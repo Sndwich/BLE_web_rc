@@ -17,6 +17,8 @@ bool systemActive = false; // Tracks if motors are currently running to prevent 
 #define SERVICE_UUID "19b10000-e8f2-537e-4f6c-d104768a1214"
 #define CONTROL_CHARACTERISTIC_UUID "19b10002-e8f2-537e-4f6c-d104768a1214"
 
+const int conLedPin = 2;
+
 class MyServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
     deviceConnected = true;
@@ -52,6 +54,7 @@ class ControlCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
   BLEDevice::init("Shroomba");
+  pinMode(conLedPin, OUTPUT);
   
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -82,9 +85,9 @@ void loop() {
   if (deviceConnected && systemActive) {
     if (millis() - lastCommandTime > TIMEOUT_MS) {
       Serial.println("SAFETY TIMEOUT: Signal lost. Halting all motors.");
-      
       // Add logic here to force motor pins low
       // e.g., digitalWrite(motorPin, LOW);
+      digitalWrite(conLedPin, LOW); // Turn off connection status LED
       
       systemActive = false;
     }
@@ -95,6 +98,7 @@ void loop() {
     Serial.println("Device disconnected. Halting all motors.");
     // Add logic here to force motor pins low
     systemActive = false;
+    digitalWrite(conLedPin, LOW); // Turn off connection status LED
     
     delay(500); 
     pServer->startAdvertising(); 
@@ -107,5 +111,6 @@ void loop() {
     oldDeviceConnected = deviceConnected;
     lastCommandTime = millis(); // Reset timer on fresh connection
     Serial.println("Device Connected");
+    digitalWrite(conLedPin, HIGH); // Turn ON connection status LED
   }
 }
