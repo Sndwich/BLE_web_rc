@@ -130,20 +130,22 @@
     // --- BLE Device Specs ---
     var deviceName = 'Shroomba';
     var bleService = '19b10000-e8f2-537e-4f6c-d104768a1214';
-    // We will use ONE single characteristic for all controls
     var controlCharacteristicUUID = '19b10002-e8f2-537e-4f6c-d104768a1214'; 
 
     var bleServer;
     var bleServiceFound;
 
-    // --- Global Control State ---
-    // This holds the current "snapshot" of all inputs
+    // --- State and Queue Management ---
     let controlState = {
-        brushState: 0,   // 0: OFF, 1: ON
-        brushSpeed: 50,  // 1 - 100
-        moveDir: 0,      // 0: Stop, 1: Fwd, 2: Rev, 3: Left, 4: Right
-        moveSpeed: 50    // 1 - 100
+        brushState: 0,
+        brushSpeed: 50,
+        moveDir: 0,
+        moveSpeed: 50
     };
+
+    let isWriting = false;
+    let pendingUpdate = false;
+    let heartbeatInterval;
 
     // --- Connection Setup ---
     connectButton.addEventListener('click', () => {
@@ -160,7 +162,6 @@
     }
 
     function connectToDevice() {
-        console.log('Initializing Bluetooth...');
         navigator.bluetooth.requestDevice({
             filters: [{name: deviceName}],
             optionalServices: [bleService]
@@ -177,9 +178,10 @@
         })
         .then(service => {
             bleServiceFound = service;
-            console.log("Service discovered. Ready to send commands.");
-            // Sync the ESP32 with the default slider positions immediately upon connection
             sendControlState(); 
+            
+            // Start 200ms heartbeat
+            heartbeatInterval = setInterval(sendControlState, 200);
         })
         .catch(error => {
             console.log('Connection Error: ', error);
@@ -189,19 +191,29 @@
     function onDisconnected() {
         bleStateContainer.innerHTML = "Disconnected";
         bleStateContainer.style.color = "#d13a30";
+        clearInterval(heartbeatInterval);
     }
 
     function disconnectDevice() {
         if (bleServer && bleServer.connected) {
             bleServer.disconnect();
         }
+        clearInterval(heartbeatInterval);
     }
 
-    // --- Unified Send Function ---
+    // --- Unified Queued Send Function ---
     function sendControlState() {
         if (!bleServer || !bleServer.connected || !bleServiceFound) return;
 
-        // Pack the state into a 4-byte array
+        // If a write is currently happening, flag that a new one is needed and abort
+        if (isWriting) {
+            pendingUpdate = true;
+            return;
+        }
+
+        isWriting = true;
+        pendingUpdate = false;
+
         const data = new Uint8Array([
             controlState.brushState,
             controlState.brushSpeed,
@@ -214,37 +226,26 @@
             return characteristic.writeValue(data);
         })
         .then(() => {
-            console.log("Sent state: ", controlState);
+            isWriting = false;
+            // If state changed during transmission, send immediately
+            if (pendingUpdate) sendControlState();
         })
         .catch(error => {
-            console.error("Error writing characteristic: ", error);
+            console.error("Write error: ", error);
+            isWriting = false;
+            if (pendingUpdate) sendControlState();
         });
     }
 
     // --- Event Listeners: Brush ---
-    brushOnButton.addEventListener('click', () => {
-        controlState.brushState = 1;
-        sendControlState();
-    });
-
-    brushOffButton.addEventListener('click', () => {
-        controlState.brushState = 0;
-        sendControlState();
-    });
-
-    brushSpeedSlider.addEventListener('input', (event) => {
-        controlState.brushSpeed = parseInt(event.target.value);
-        sendControlState();
-    });
+    brushOnButton.addEventListener('click', () => { controlState.brushState = 1; sendControlState(); });
+    brushOffButton.addEventListener('click', () => { controlState.brushState = 0; sendControlState(); });
+    brushSpeedSlider.addEventListener('input', (e) => { controlState.brushSpeed = parseInt(e.target.value); sendControlState(); });
 
     // --- Event Listeners: Movement Speed ---
-    moveSpeedSlider.addEventListener('input', (event) => {
-        controlState.moveSpeed = parseInt(event.target.value);
-        sendControlState();
-    });
+    moveSpeedSlider.addEventListener('input', (e) => { controlState.moveSpeed = parseInt(e.target.value); sendControlState(); });
 
-    // --- Event Listeners: D-Pad ---
-    // Helper function to handle momentary direction presses
+    // --- Event Listeners: D-Pad (Pointer Events) ---
     function setDirection(dirCode) {
         if (controlState.moveDir !== dirCode) {
             controlState.moveDir = dirCode;
@@ -252,37 +253,30 @@
         }
     }
 
-    // Mouse/Touch Down -> Start Moving
-    btnForward.addEventListener('mousedown', () => setDirection(1));
-    btnBack.addEventListener('mousedown', () => setDirection(2));
-    btnLeft.addEventListener('mousedown', () => setDirection(3));
-    btnRight.addEventListener('mousedown', () => setDirection(4));
+    // Pointer down initiates movement
+    btnForward.addEventListener('pointerdown', (e) => { e.preventDefault(); setDirection(1); });
+    btnBack.addEventListener('pointerdown', (e) => { e.preventDefault(); setDirection(2); });
+    btnLeft.addEventListener('pointerdown', (e) => { e.preventDefault(); setDirection(3); });
+    btnRight.addEventListener('pointerdown', (e) => { e.preventDefault(); setDirection(4); });
 
-    btnForward.addEventListener('touchstart', (e) => { e.preventDefault(); setDirection(1); });
-    btnBack.addEventListener('touchstart', (e) => { e.preventDefault(); setDirection(2); });
-    btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); setDirection(3); });
-    btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); setDirection(4); });
-
-    // Mouse/Touch Up -> Stop Moving
-    const stopMoving = () => setDirection(0);
+    // Pointer up, cancel, or leave stops movement
+    const stopMoving = (e) => { e.preventDefault(); setDirection(0); };
     const dPadButtons = [btnForward, btnBack, btnLeft, btnRight];
 
     dPadButtons.forEach(btn => {
-        btn.addEventListener('mouseup', stopMoving);
-        btn.addEventListener('mouseleave', stopMoving);
-        btn.addEventListener('touchend', stopMoving);
+        btn.addEventListener('pointerup', stopMoving);
+        btn.addEventListener('pointercancel', stopMoving);
+        btn.addEventListener('pointerleave', stopMoving);
     });
 
     // --- Keyboard Control ---
     document.addEventListener('keydown', (event) => {
-        if (event.repeat) return; // Ignore holding down
+        if (event.repeat) return; 
 
         const key = event.key.toLowerCase();
-        
         if (key === 'o') { brushOnButton.click(); }
         else if (key === 'p') { brushOffButton.click(); }
         
-        // WASD or Arrow keys for driving
         if (key === 'w' || key === 'arrowup') { setDirection(1); }
         else if (key === 's' || key === 'arrowdown') { setDirection(2); }
         else if (key === 'a' || key === 'arrowleft') { setDirection(3); }
@@ -291,9 +285,8 @@
 
     document.addEventListener('keyup', (event) => {
         const key = event.key.toLowerCase();
-        // Stop moving when movement keys are released
         if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
-            stopMoving();
+            stopMoving(event);
         }
     });
 </script>
