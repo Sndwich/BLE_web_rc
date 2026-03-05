@@ -50,10 +50,10 @@ class ControlCallbacks : public BLECharacteristicCallbacks {
       // Update the timeout timer
       lastCommandTime = millis();
       
-      uint8_t brushState = rxValue[0];
-      uint8_t brushSpeed = rxValue[1];
-      uint8_t moveDir    = rxValue[2];
-      uint8_t moveSpeed  = rxValue[3];
+      brushState = rxValue[0];
+      brushSpeed = rxValue[1];
+      moveDir    = rxValue[2];
+      moveSpeed  = rxValue[3];
 
       // Mark system as active if anything is moving/running
       systemActive = (brushState > 0 || moveDir > 0);
@@ -109,7 +109,12 @@ void loop() {
       // Force motor pins low
       analogWrite(leftPWMPin, 0);
       analogWrite(rightPWMPin, 0);
+      analogWrite(brushPWMPin, 0);
       digitalWrite(conLedPin, LOW); // Turn off connection status LED
+      
+      // Force the global variables to 0
+      brushState = 0;
+      moveSpeed = 0;
       
       systemActive = false;
     }
@@ -160,11 +165,11 @@ void loop() {
   } else if (moveDir == 3){ // ←
     // R motor only
     digitalWrite(rightDirPin, HIGH);
-    analogWrite(leftPWMPin, 0);
     analogWrite(rightPWMPin, moveSpeed);
+    analogWrite(leftPWMPin, 0); 
   } else if (moveDir == 4){ // →
     // L motor only
-    digitalWrite(rightDirPin, HIGH);
+    digitalWrite(leftDirPin, HIGH);
     analogWrite(leftPWMPin, moveSpeed);
     analogWrite(rightPWMPin, 0);
   } else {
