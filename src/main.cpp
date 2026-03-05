@@ -17,7 +17,20 @@ bool systemActive = false; // Tracks if motors are currently running to prevent 
 #define SERVICE_UUID "19b10000-e8f2-537e-4f6c-d104768a1214"
 #define CONTROL_CHARACTERISTIC_UUID "19b10002-e8f2-537e-4f6c-d104768a1214"
 
+// Define pins
 const int conLedPin = 2;
+
+const int brushPWMPin = 23;
+const int brushDirPin = 22;
+const int rightPWMPin = 19;
+const int rightDirPin = 18;
+const int leftPWMPin = 17;
+const int leftDirPin = 16;
+
+uint8_t brushState = 0;
+uint8_t brushSpeed = 0;
+uint8_t moveDir    = 0;
+uint8_t moveSpeed  = 0;
 
 class MyServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
@@ -54,7 +67,15 @@ class ControlCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
   BLEDevice::init("Shroomba");
+  
+  // Define pin modes
   pinMode(conLedPin, OUTPUT);
+  pinMode(brushPWMPin, OUTPUT);
+  pinMode(brushDirPin,OUTPUT);
+  pinMode(rightPWMPin, OUTPUT);
+  pinMode(rightDirPin, OUTPUT);
+  pinMode(leftPWMPin, OUTPUT);
+  pinMode(leftDirPin, OUTPUT);
   
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -112,5 +133,42 @@ void loop() {
     lastCommandTime = millis(); // Reset timer on fresh connection
     Serial.println("Device Connected");
     digitalWrite(conLedPin, HIGH); // Turn ON connection status LED
+  }
+
+  // Handle brush motor
+  if (brushState == 1){
+    analogWrite(brushPWMPin, brushSpeed); //Generate PWM signal respective to brushSpeed
+  } else {
+    analogWrite(brushPWMPin, 0); //Set brush motor pin to LOW
+  }
+
+  // Handle movement control
+  // later add turn on spot mode that runs motors in opposite directions
+  if (moveDir == 1){ // ↑
+    // Both motors forwards
+    digitalWrite(leftDirPin, HIGH);
+    digitalWrite(rightDirPin, HIGH);
+    analogWrite(leftPWMPin, moveSpeed);
+    analogWrite(rightPWMPin, moveSpeed);
+  } else if (moveDir == 2){ // ↓
+    // Both motors reverse
+    digitalWrite(leftDirPin, LOW);
+    digitalWrite(rightDirPin, LOW);
+    analogWrite(leftPWMPin, moveSpeed);
+    analogWrite(rightPWMPin, moveSpeed);
+  } else if (moveDir == 3){ // ←
+    // R motor only
+    digitalWrite(rightDirPin, HIGH);
+    analogWrite(leftPWMPin, 0);
+    analogWrite(rightPWMPin, moveSpeed);
+  } else if (moveDir == 4){ // →
+    // L motor only
+    digitalWrite(rightDirPin, HIGH);
+    analogWrite(leftPWMPin, moveSpeed);
+    analogWrite(rightPWMPin, 0);
+  } else {
+    // Set both motors to LOW
+    analogWrite(leftPWMPin, 0);
+    analogWrite(rightPWMPin, 0);
   }
 }
