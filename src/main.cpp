@@ -106,8 +106,9 @@ void loop() {
   if (deviceConnected && systemActive) {
     if (millis() - lastCommandTime > TIMEOUT_MS) {
       Serial.println("SAFETY TIMEOUT: Signal lost. Halting all motors.");
-      // Add logic here to force motor pins low
-      // e.g., digitalWrite(motorPin, LOW);
+      // Force motor pins low
+      analogWrite(leftPWMPin, 0);
+      analogWrite(rightPWMPin, 0);
       digitalWrite(conLedPin, LOW); // Turn off connection status LED
       
       systemActive = false;
