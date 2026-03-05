@@ -101,32 +101,34 @@ void setup() {
   Serial.println("Waiting for a client connection...");
 }
 
+void MotorKill(){
+  // Force motor pins low
+  analogWrite(leftPWMPin, 0);
+  analogWrite(rightPWMPin, 0);
+  analogWrite(brushPWMPin, 0);
+  digitalWrite(conLedPin, LOW); // Turn off connection status LED
+     
+  // Force the global variables to 0
+  brushState = 0;
+  moveSpeed = 0;
+  moveDir = 0;
+
+  systemActive = false;
+}
+
 void loop() {
   // Safety Timeout Check
   if (deviceConnected && systemActive) {
     if (millis() - lastCommandTime > TIMEOUT_MS) {
       Serial.println("SAFETY TIMEOUT: Signal lost. Halting all motors.");
-      // Force motor pins low
-      analogWrite(leftPWMPin, 0);
-      analogWrite(rightPWMPin, 0);
-      analogWrite(brushPWMPin, 0);
-      digitalWrite(conLedPin, LOW); // Turn off connection status LED
-      
-      // Force the global variables to 0
-      brushState = 0;
-      moveSpeed = 0;
-      
-      systemActive = false;
+      MotorKill();
     }
   }
 
   // Handle Disconnection
   if (!deviceConnected && oldDeviceConnected) {
     Serial.println("Device disconnected. Halting all motors.");
-    // Add logic here to force motor pins low
-    systemActive = false;
-    digitalWrite(conLedPin, LOW); // Turn off connection status LED
-    
+    MotorKill();
     delay(500); 
     pServer->startAdvertising(); 
     Serial.println("Start advertising");
@@ -178,3 +180,4 @@ void loop() {
     analogWrite(rightPWMPin, 0);
   }
 }
+
