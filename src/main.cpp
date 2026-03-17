@@ -22,15 +22,17 @@ const int conLedPin = 2;
 
 const int brushPWMPin = 23;
 const int brushDirPin = 22;
-const int rightPWMPin = 19;
+const int rightPWMPin = 5;
 const int rightDirPin = 18;
-const int leftPWMPin = 17;
-const int leftDirPin = 16;
+const int leftPWMPin = 16;
+const int leftDirPin = 17;
 
 uint8_t brushState = 0;
 uint8_t brushSpeed = 0;
 uint8_t moveDir    = 0;
 uint8_t moveSpeed  = 0;
+
+uint8_t oldMoveDir = 0;
 
 class MyServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
@@ -112,6 +114,7 @@ void MotorKill(){
   brushState = 0;
   moveSpeed = 0;
   moveDir = 0;
+  oldMoveDir =0;
 
   systemActive = false;
 }
@@ -150,34 +153,41 @@ void loop() {
     analogWrite(brushPWMPin, 0); //Set brush motor pin to LOW
   }
 
-  // Handle movement control
-  // later add turn on spot mode that runs motors in opposite directions
-  if (moveDir == 1){ // ↑
-    // Both motors forwards
-    digitalWrite(leftDirPin, HIGH);
-    digitalWrite(rightDirPin, HIGH);
-    analogWrite(leftPWMPin, moveSpeed);
-    analogWrite(rightPWMPin, moveSpeed);
-  } else if (moveDir == 2){ // ↓
-    // Both motors reverse
-    digitalWrite(leftDirPin, LOW);
-    digitalWrite(rightDirPin, LOW);
-    analogWrite(leftPWMPin, moveSpeed);
-    analogWrite(rightPWMPin, moveSpeed);
-  } else if (moveDir == 3){ // ←
-    // R motor only
-    digitalWrite(rightDirPin, HIGH);
-    analogWrite(rightPWMPin, moveSpeed);
-    analogWrite(leftPWMPin, 0); 
-  } else if (moveDir == 4){ // →
-    // L motor only
-    digitalWrite(leftDirPin, HIGH);
-    analogWrite(leftPWMPin, moveSpeed);
-    analogWrite(rightPWMPin, 0);
-  } else {
-    // Set both motors to LOW
-    analogWrite(leftPWMPin, 0);
-    analogWrite(rightPWMPin, 0);
+  if (moveDir != oldMoveDir){
+    // Handle movement control
+    // later add turn on spot mode that runs motors in opposite directions
+    if (moveDir == 1){ // ↑
+      // Both motors forwards
+      digitalWrite(leftDirPin, HIGH);
+      digitalWrite(rightDirPin, HIGH);
+      analogWrite(leftPWMPin, moveSpeed);
+      analogWrite(rightPWMPin, moveSpeed);
+      Serial.println("FORWARDS");
+    } else if (moveDir == 2){ // ↓
+      // Both motors reverse
+      digitalWrite(leftDirPin, LOW);
+      digitalWrite(rightDirPin, LOW);
+      analogWrite(leftPWMPin, moveSpeed);
+      analogWrite(rightPWMPin, moveSpeed);
+      Serial.println("BACKWARDS");
+    } else if (moveDir == 3){ // ←
+      // R motor only
+      digitalWrite(rightDirPin, HIGH);
+      analogWrite(rightPWMPin, moveSpeed);
+      analogWrite(leftPWMPin, 0);
+      Serial.println("LEFT"); 
+    } else if (moveDir == 4){ // →
+      // L motor only
+      digitalWrite(leftDirPin, HIGH);
+      analogWrite(leftPWMPin, moveSpeed);
+      analogWrite(rightPWMPin, 0);
+      Serial.println("RIGHT");
+    } else {
+      // Set both motors to LOW
+      analogWrite(leftPWMPin, 0);
+      analogWrite(rightPWMPin, 0);
+      Serial.println("STOP");
+    }
   }
+  oldMoveDir = moveDir;
 }
-
