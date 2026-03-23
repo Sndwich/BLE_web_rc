@@ -24,8 +24,17 @@ const int brushPWMPin = 23;
 const int brushDirPin = 22;
 const int rightPWMPin = 5;
 const int rightDirPin = 18;
-const int leftPWMPin = 33;
-const int leftDirPin = 32;
+const int leftPWMPin = 16;
+const int leftDirPin = 17;
+
+// --- LEDC PWM Config ---
+const int freq = 5000;
+const int pwmResolution = 8;
+
+// Hardcode indpendent timer channels
+const int rightPWMChannel = 2;
+const int leftPWMChannel = 3;
+const int brushPWMChannel = 4;
 
 uint8_t brushState = 0;
 uint8_t brushSpeed = 0;
@@ -72,12 +81,24 @@ void setup() {
   
   // Define pin modes
   pinMode(conLedPin, OUTPUT);
-  pinMode(brushPWMPin, OUTPUT);
   pinMode(brushDirPin,OUTPUT);
-  pinMode(rightPWMPin, OUTPUT);
   pinMode(rightDirPin, OUTPUT);
-  pinMode(leftPWMPin, OUTPUT);
   pinMode(leftDirPin, OUTPUT);
+
+  // Config LEDC PWM Timers
+  ledcSetup(rightPWMChannel, freq, pwmResolution);
+  ledcSetup(leftPWMChannel, freq, pwmResolution);
+  ledcSetup(brushPWMChannel, freq, pwmResolution);
+
+  // Attatch pins to the configured channels
+  ledcAttachPin(rightPWMPin, rightPWMChannel);
+  ledcAttachPin(leftPWMPin, leftPWMChannel);
+  ledcAttachPin(brushPWMPin, brushPWMChannel);
+
+  // Start motors off
+  ledcWrite(rightPWMChannel, 0);
+  ledcWrite(leftPWMChannel, 0);
+  ledcWrite(brushPWMChannel, 0);
   
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -105,9 +126,9 @@ void setup() {
 
 void MotorKill(){
   // Force motor pins low
-  analogWrite(leftPWMPin, 0);
-  analogWrite(rightPWMPin, 0);
-  analogWrite(brushPWMPin, 0);
+  ledcWrite(leftPWMChannel, 0);
+  ledcWrite(rightPWMChannel, 0);
+  ledcWrite(brushPWMChannel, 0);
   digitalWrite(conLedPin, LOW); // Turn off connection status LED
      
   // Force the global variables to 0
@@ -148,9 +169,9 @@ void loop() {
 
   // Handle brush motor
   if (brushState == 1){
-    analogWrite(brushPWMPin, brushSpeed); //Generate PWM signal respective to brushSpeed
+    ledcWrite(brushPWMChannel, brushSpeed); //Generate PWM signal respective to brushSpeed
   } else {
-    analogWrite(brushPWMPin, 0); //Set brush motor pin to LOW
+    ledcWrite(brushPWMChannel, 0); //Set brush motor pin to LOW
   }
 
   if (moveDir != oldMoveDir){
@@ -160,32 +181,32 @@ void loop() {
       // Both motors forwards
       digitalWrite(leftDirPin, HIGH);
       digitalWrite(rightDirPin, HIGH);
-      analogWrite(leftPWMPin, moveSpeed);
-      analogWrite(rightPWMPin, moveSpeed);
+      ledcWrite(leftPWMChannel, moveSpeed);
+      ledcWrite(rightPWMChannel, moveSpeed);
       Serial.println("FORWARDS");
     } else if (moveDir == 2){ // ↓
       // Both motors reverse
       digitalWrite(leftDirPin, LOW);
       digitalWrite(rightDirPin, LOW);
-      analogWrite(leftPWMPin, moveSpeed);
-      analogWrite(rightPWMPin, moveSpeed);
+      ledcWrite(leftPWMChannel, moveSpeed);
+      ledcWrite(rightPWMChannel, moveSpeed);
       Serial.println("BACKWARDS");
     } else if (moveDir == 3){ // ←
       // R motor only
       digitalWrite(rightDirPin, HIGH);
-      analogWrite(rightPWMPin, moveSpeed);
-      analogWrite(leftPWMPin, 0);
+      ledcWrite(leftPWMChannel, 0);
+      ledcWrite(rightPWMChannel, moveSpeed);
       Serial.println("LEFT"); 
     } else if (moveDir == 4){ // →
       // L motor only
       digitalWrite(leftDirPin, HIGH);
-      analogWrite(leftPWMPin, moveSpeed);
-      analogWrite(rightPWMPin, 0);
+      ledcWrite(leftPWMChannel, moveSpeed);
+      ledcWrite(rightPWMChannel, 0);
       Serial.println("RIGHT");
     } else {
       // Set both motors to LOW
-      analogWrite(leftPWMPin, 0);
-      analogWrite(rightPWMPin, 0);
+      ledcWrite(leftPWMChannel, 0);
+      ledcWrite(rightPWMChannel, 0);
       Serial.println("STOP");
     }
   }
