@@ -24,8 +24,8 @@ const int brushPWMPin = 23;
 const int brushDirPin = 22;
 const int rightPWMPin = 5;
 const int rightDirPin = 18;
-const int leftPWMPin = 16;
-const int leftDirPin = 17;
+const int leftPWMPin = 33;
+const int leftDirPin = 32;
 
 uint8_t brushState = 0;
 uint8_t brushSpeed = 0;
