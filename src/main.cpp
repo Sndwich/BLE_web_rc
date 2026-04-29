@@ -20,8 +20,8 @@ bool systemActive = false; // Tracks if motors are currently running to prevent 
 // Define pins
 const int conLedPin = 2;
 
-const int brushPWMPin = 23;
-const int brushDirPin = 22;
+const int brushPWMPin = 14;
+const int brushDirPin = 27;
 const int rightPWMPin = 5;
 const int rightDirPin = 18;
 const int leftPWMPin = 16;
@@ -42,6 +42,8 @@ uint8_t moveDir    = 0;
 uint8_t moveSpeed  = 0;
 
 uint8_t oldMoveDir = 0;
+uint8_t oldBrushSpeed = 0;
+uint8_t oldBrushState = 0;
 
 class MyServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) {
@@ -168,11 +170,18 @@ void loop() {
   }
 
   // Handle brush motor
-  if (brushState == 1){
-    ledcWrite(brushPWMChannel, brushSpeed); //Generate PWM signal respective to brushSpeed
-  } else {
-    ledcWrite(brushPWMChannel, 0); //Set brush motor pin to LOW
+  if (brushState != oldBrushState || brushSpeed != oldBrushSpeed){
+
+    if (brushState == 1){
+      ledcWrite(brushPWMChannel, brushSpeed); //Generate PWM signal respective to brushSpeed
+    } else {
+      ledcWrite(brushPWMChannel, 0); //Set brush motor pin to LOW
+    }
+
+    oldBrushState = brushState;
+    oldBrushSpeed = brushSpeed;
   }
+  
 
   if (moveDir != oldMoveDir){
     // Handle movement control
@@ -191,13 +200,13 @@ void loop() {
       ledcWrite(leftPWMChannel, moveSpeed);
       ledcWrite(rightPWMChannel, moveSpeed);
       Serial.println("BACKWARDS");
-    } else if (moveDir == 3){ // ←
+    } else if (moveDir == 4){ // ←
       // R motor only
       digitalWrite(rightDirPin, HIGH);
       ledcWrite(leftPWMChannel, 0);
       ledcWrite(rightPWMChannel, moveSpeed);
       Serial.println("LEFT"); 
-    } else if (moveDir == 4){ // →
+    } else if (moveDir == 3){ // →
       // L motor only
       digitalWrite(leftDirPin, HIGH);
       ledcWrite(leftPWMChannel, moveSpeed);

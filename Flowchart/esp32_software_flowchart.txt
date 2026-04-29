@@ -1,0 +1,64 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+flowchart TD
+    Start([Start Loop]) --> Phase1
+
+    subgraph Phase1 [Phase 1: Safety & Connection]
+        direction LR
+        S1{Connected &<br>Active?} -->|Yes| S2{Timeout > 500ms?}
+        S1 -->|No| C1{Just<br>Disconnected?}
+        
+        S2 -->|Yes| MK1[Execute MotorKill]
+        S2 -->|No| C1
+        MK1 --> C1
+
+        C1 -->|Yes| MK2[MotorKill &<br>Restart Adv]
+        C1 -->|No| C2{Just<br>Connected?}
+        
+        MK2 --> C2
+        
+        C2 -->|Yes| C3[Reset Timer &<br>LED ON]
+        C2 -->|No| EndPhase1((Proceed))
+        C3 --> EndPhase1
+    end
+
+    Phase1 --> Phase2
+
+    subgraph Phase2 [Phase 2: Brush Control]
+        direction LR
+        B1{Brush State/Speed<br>Changed?} -->|Yes| B2{State == 1?}
+        B1 -->|No| EndPhase2((Proceed))
+        
+        B2 -->|Yes| B3[Write:<br>Brush PWM]
+        B2 -->|No| B4[Write:<br>0 PWM]
+        
+        B3 --> B5[Update Old<br>Brush Trackers]
+        B4 --> B5
+        B5 --> EndPhase2
+    end
+
+    Phase2 --> Phase3
+
+    subgraph Phase3 [Phase 3: Movement Control]
+        direction LR
+        M1{Move Dir/Speed<br>Changed?} -->|Yes| M2{moveDir?}
+        M1 -->|No| EndLoop([End Loop])
+        
+        M2 -->|1: FWD| M_Up[L FWD, R FWD]
+        M2 -->|2: REV| M_Down[L REV, R REV]
+        M2 -->|3: L| M_Left[L STOP, R FWD]
+        M2 -->|4: R| M_Right[L FWD, R STOP]
+        M2 -->|Else| M_Stop[L STOP, R STOP]
+        
+        M_Up --> M3[Update Old<br>Move Trackers]
+        M_Down --> M3
+        M_Left --> M3
+        M_Right --> M3
+        M_Stop --> M3
+        
+        M3 --> EndLoop
+    end
